@@ -77,7 +77,13 @@ fn parse_index_entry(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<IndexEntry>
     entry.size = read_u32(cursor)?;
     cursor.read_exact(&mut entry.sha1)?;
 
-    entry.name_len = read_u16(cursor)?;
+    let flags = read_u16(cursor)?;
+    // skip 4 bytes.
+    // 1bit: assume valid
+    // 1bit: extended flag (must be zero in version 2)
+    // 2bit: stage (during merge)
+
+    entry.name_len = flags & 0xFFF;
     let mut name_buffer = vec![0; entry.name_len as usize];
     cursor.read_exact(&mut name_buffer)?;
     entry.name = String::from_utf8(name_buffer).unwrap();
