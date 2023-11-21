@@ -45,6 +45,14 @@ fn main() {
         let sha1 = sha1_to_hex(&entry.sha1);
         println!("{:o} {} 0\t{}", mode, sha1, entry.name);
     }
+
+    for entry in &index_state.entries {
+        let ctime = entry.ctime;
+        let mtime = entry.mtime;
+        let size = entry.size;
+        let name = &entry.name;
+        println!("{} {} {}\t{}", ctime, mtime, size, name);
+    }
 }
 
 fn sha1_to_hex(sha1: &[u8]) -> String {
