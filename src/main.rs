@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use std::fs::File;
 use std::io::{self, Read};
 
@@ -11,22 +12,24 @@ struct IndexState {
 
 #[derive(Debug, Default)]
 struct IndexEntry {
-    ctime: u32,
-    ctime_nano: u32,
-    mtime: u32,
-    mtime_nano: u32,
-    dev: u32,
-    ino: u32,
+    ctime: NaiveDateTime,
+    mtime: NaiveDateTime,
+
+    device: u32,
+    inode: u32,
     mode: u32,
+
     uid: u32,
     gid: u32,
+
     size: u32,
     sha1: [u8; 20],
-    namelen: u16,
+
+    name_len: u16,
     name: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct IndexHeader {
     signature: [u8; 4],
     version: u32,
@@ -37,7 +40,7 @@ fn main() {
     let index_file = read_index().unwrap();
     let index_state = parse_file(index_file).unwrap();
 
-    for entry in index_state.entries {
+    for entry in &index_state.entries {
         let mode = entry.mode;
         let sha1 = sha1_to_hex(&entry.sha1);
         println!("{:o} {} 0\t{}", mode, sha1, entry.name);
@@ -64,37 +67,31 @@ fn parse_file(file: Vec<u8>) -> io::Result<IndexState> {
 fn parse_index_entry(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<IndexEntry> {
     let mut entry = IndexEntry::default();
 
-    entry.ctime = read_u32(cursor)?;
-    entry.ctime_nano = read_u32(cursor)?;
-    entry.mtime = read_u32(cursor)?;
-    entry.mtime_nano = read_u32(cursor)?;
-    entry.dev = read_u32(cursor)?;
-    entry.ino = read_u32(cursor)?;
+    entry.ctime = read_timestamp(cursor)?;
+    entry.mtime = read_timestamp(cursor)?;
+    entry.device = read_u32(cursor)?;
+    entry.inode = read_u32(cursor)?;
     entry.mode = read_u32(cursor)?;
     entry.uid = read_u32(cursor)?;
     entry.gid = read_u32(cursor)?;
     entry.size = read_u32(cursor)?;
     cursor.read_exact(&mut entry.sha1)?;
-    entry.namelen = read_u16(cursor)?;
-    let mut name_buffer = vec![0; entry.namelen as usize];
+
+    entry.name_len = read_u16(cursor)?;
+    let mut name_buffer = vec![0; entry.name_len as usize];
     cursor.read_exact(&mut name_buffer)?;
     entry.name = String::from_utf8(name_buffer).unwrap();
 
-    let floor = (entry.namelen - 2) / 8;
+    let floor = (entry.name_len - 2) / 8;
     let target = (floor + 1) * 8 + 2;
-    let padding = target - entry.namelen;
+    let padding = target - entry.name_len;
     cursor.set_position(cursor.position() + padding as u64);
 
     Ok(entry)
 }
 
 fn parse_header(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<IndexHeader> {
-    let mut header = IndexHeader {
-        signature: [0; 4],
-        version: 0,
-        entries: 0,
-    };
-
+    let mut header = IndexHeader::default();
     cursor.read_exact(&mut header.signature)?;
     if &header.signature != b"DIRC" {
         return Err(io::Error::new(
@@ -112,6 +109,16 @@ fn parse_header(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<IndexHeader> {
     header.entries = read_u32(cursor)?;
 
     Ok(header)
+}
+
+fn read_timestamp(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<NaiveDateTime> {
+    let seconds = read_u32(cursor)?;
+    let nanoseconds = read_u32(cursor)?;
+
+    let datetime = NaiveDateTime::from_timestamp_opt(seconds as i64, nanoseconds).ok_or(
+        io::Error::new(io::ErrorKind::InvalidData, "Invalid timestamp"),
+    )?;
+    Ok(datetime)
 }
 
 fn read_u16(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<u16> {
