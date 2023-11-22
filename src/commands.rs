@@ -63,13 +63,5 @@ impl LsFiles {
             let sha1 = entry.get_sha1();
             println!("{:o} {} 0\t{}", mode, sha1, entry.name);
         }
-
-        for entry in &index_state.entries {
-            let ctime = entry.ctime;
-            let mtime = entry.mtime;
-            let size = entry.size;
-            let name = &entry.name;
-            println!("{} {} {}\t{}", ctime, mtime, size, name);
-        }
     }
 }
