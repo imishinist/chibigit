@@ -56,7 +56,7 @@ pub struct LsFiles {
 impl LsFiles {
     pub fn run(&self) {
         let index_file = super::read_index().unwrap();
-        let index_state = super::parse_index_file(index_file).unwrap();
+        let index_state = super::parse_index_file(&index_file).unwrap();
 
         for entry in &index_state.entries {
             let mode = entry.mode;

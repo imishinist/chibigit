@@ -88,8 +88,8 @@ fn sha1_to_hex(sha1: &[u8]) -> String {
     sha1.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
-pub fn parse_object(file: Vec<u8>) -> io::Result<Object> {
-    let mut decoder = flate2::read::ZlibDecoder::new(file.as_slice());
+pub fn parse_object(file: &[u8]) -> io::Result<Object> {
+    let mut decoder = flate2::read::ZlibDecoder::new(file);
     let mut inflated_content = Vec::new();
     decoder.read_to_end(&mut inflated_content)?;
 
@@ -141,20 +141,20 @@ pub fn parse_tree_content(content: &[u8]) -> io::Result<Vec<TreeEntry>> {
     Ok(entries)
 }
 
-pub fn parse_index_file(file: Vec<u8>) -> io::Result<IndexState> {
+pub fn parse_index_file(file: &[u8]) -> io::Result<IndexState> {
     let mut cursor = io::Cursor::new(file);
-    let header = parse_header(&mut cursor)?;
+    let header = read_header(&mut cursor)?;
 
     let mut entries = Vec::new();
     for _ in 0..header.entries {
-        let entry = parse_index_entry(&mut cursor)?;
+        let entry = read_index_entry(&mut cursor)?;
         entries.push(entry);
     }
     // skip
     Ok(IndexState { header, entries })
 }
 
-fn parse_index_entry(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<IndexEntry> {
+fn read_index_entry(cursor: &mut io::Cursor<&[u8]>) -> io::Result<IndexEntry> {
     let mut entry = IndexEntry::default();
 
     entry.ctime = read_timestamp(cursor)?;
@@ -186,7 +186,7 @@ fn parse_index_entry(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<IndexEntry>
     Ok(entry)
 }
 
-fn parse_header(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<IndexHeader> {
+fn read_header(cursor: &mut io::Cursor<&[u8]>) -> io::Result<IndexHeader> {
     let mut header = IndexHeader::default();
     cursor.read_exact(&mut header.signature)?;
     if &header.signature != b"DIRC" {
@@ -207,7 +207,7 @@ fn parse_header(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<IndexHeader> {
     Ok(header)
 }
 
-fn read_timestamp(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<NaiveDateTime> {
+fn read_timestamp(cursor: &mut io::Cursor<&[u8]>) -> io::Result<NaiveDateTime> {
     let seconds = read_u32(cursor)?;
     let nanoseconds = read_u32(cursor)?;
 
@@ -217,13 +217,13 @@ fn read_timestamp(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<NaiveDateTime>
     Ok(datetime)
 }
 
-fn read_u16(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<u16> {
+fn read_u16(cursor: &mut io::Cursor<&[u8]>) -> io::Result<u16> {
     let mut buffer = [0; 2];
     cursor.read_exact(&mut buffer)?;
     Ok(u16::from_be_bytes(buffer))
 }
 
-fn read_u32(cursor: &mut io::Cursor<Vec<u8>>) -> io::Result<u32> {
+fn read_u32(cursor: &mut io::Cursor<&[u8]>) -> io::Result<u32> {
     let mut buffer = [0; 4];
     cursor.read_exact(&mut buffer)?;
     Ok(u32::from_be_bytes(buffer))
