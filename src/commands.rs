@@ -56,7 +56,7 @@ pub struct LsFiles {
 impl LsFiles {
     pub fn run(&self) {
         let index_file = super::read_index().unwrap();
-        let index_state = super::parse_file(index_file).unwrap();
+        let index_state = super::parse_index_file(index_file).unwrap();
 
         for entry in &index_state.entries {
             let mode = entry.mode;
@@ -65,3 +65,38 @@ impl LsFiles {
         }
     }
 }
+
+#[derive(Args)]
+pub struct CatFile {
+    /// pretty print <object> contents
+    #[arg(short = 'p', value_name="object")]
+    preview: Option<String>,
+}
+
+impl CatFile {
+    pub fn run(&self) {
+        if let Some(object) = &self.preview {
+            let object_file = crate::read_object(object).unwrap();
+            let object = crate::parse_object(object_file).unwrap();
+
+            match object.r#type {
+                crate::ObjectType::Blob => {
+                    print!("{}", std::str::from_utf8(&object.content).unwrap());
+                },
+                crate::ObjectType::Commit => {
+                    print!("{}", std::str::from_utf8(&object.content).unwrap());
+                },
+                crate::ObjectType::Tree => {
+                    let tree_content = crate::parse_tree_content(&object.content).unwrap();
+                    for entry in tree_content {
+                        let entry_object = crate::read_object(&entry.get_sha1()).unwrap();
+                        let object = crate::parse_object(entry_object).unwrap();
+
+                        println!("{:06} {} {}\t{}", entry.mode, object.r#type, entry.get_sha1(), entry.name);
+                    }
+                },
+            }
+        }
+    }
+}
+
