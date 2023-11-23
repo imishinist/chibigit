@@ -110,6 +110,16 @@ pub struct Object {
     pub content: Vec<u8>,
 }
 
+impl Object {
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut buffer = Vec::new();
+        buffer.extend_from_slice(format!("{} {}\0", self.r#type, self.size).as_bytes());
+        buffer.extend_from_slice(&self.content);
+
+        buffer
+    }
+}
+
 pub struct TreeEntry {
     // octal
     pub mode: Mode,
@@ -133,7 +143,6 @@ impl Display for Sha1 {
         write!(f, "{}", hex)
     }
 }
-
 fn sha1_to_hex(sha1: &[u8]) -> String {
     sha1.iter().map(|b| format!("{:02x}", b)).collect()
 }
@@ -147,11 +156,25 @@ pub fn hash_content(content: &[u8]) -> Sha1 {
 }
 
 pub fn hash_object(object: &Object) -> Sha1 {
-    let mut buffer = Vec::new();
-    buffer.extend_from_slice(format!("{} {}\0", object.r#type, object.size).as_bytes());
-    buffer.extend_from_slice(&object.content);
-
+    let buffer = object.serialize();
     hash_content(&buffer)
+}
+
+pub fn write_object(object: &Object) -> io::Result<Sha1> {
+    let buffer = object.serialize();
+
+    let sha1 = hash_content(&buffer);
+    let sha1_string = sha1.to_string();
+    let sha1_str = sha1_string.as_str();
+
+    // mkdir -p .git/objects/xx
+    create_dir(&format!( ".git/objects/{}", &sha1_str[..2]))?;
+
+    let mut file = File::create(format!(".git/objects/{}/{}", &sha1_str[..2], &sha1_str[2..]))?;
+    let mut encoder = flate2::write::ZlibEncoder::new(&mut file, flate2::Compression::default());
+    encoder.write_all(&buffer)?;
+
+    Ok(sha1)
 }
 
 pub fn parse_object(file: &[u8]) -> io::Result<Object> {

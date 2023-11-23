@@ -140,12 +140,19 @@ impl HashObject {
                 .read_to_end(&mut buffer)
                 .expect("Failed to read from stdin");
 
-            let sha1 = crate::hash_object(&crate::Object {
+            let object = crate::Object {
                 r#type: ObjectType::Blob,
                 size: buffer.len() as u32,
                 content: buffer,
-            });
-            println!("{}", sha1);
+            };
+
+            if self.write {
+                let sha1 = crate::write_object(&object).expect("Failed to write object");
+                println!("{}", sha1);
+            } else {
+                let sha1 = crate::hash_object(&object);
+                println!("{}", sha1);
+            }
         }
     }
 }

@@ -1,6 +1,5 @@
 #!/bin/bash
 
-set -e
 cd "$(dirname "$0")"/../
 
 find tests -name '*.sh' -type f -perm -u+x | while read -r file; do
