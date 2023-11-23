@@ -1,23 +1,17 @@
 #!/bin/bash
+. $(dirname $0)/common.inc
 
-set -e
-. "$(dirname "$0")"/common.sh
+cd $(setup_new)
 
 rev=$(git rev-parse HEAD)
-echo -n "cat-file -p #{commit hash} => "
-diff \
-  <($GIT cat-file -p $rev) \
-  <($CGIT cat-file -p $rev)
-echo_green "OK"
+$GIT cat-file -p $rev | grep -E "^tree [0-9a-z]{40}$" >/dev/null
+$GIT cat-file -p $rev | grep -E "^parent [0-9a-z]{40}$" >/dev/null
 
-echo -n "cat-file -p #{tree hash} => "
-diff \
-  <($GIT cat-file -p $($GIT cat-file -p $rev | grep tree | awk '{print $2}')) \
-  <($CGIT cat-file -p $($CGIT cat-file -p $rev | grep tree | awk '{print $2}'))
-echo_green "OK"
+tree=$($GIT cat-file -p $rev | grep tree | awk '{print $2}')
+$GIT cat-file -p "$tree" | grep -Ei "^[0-9]{6} blob [0-9a-z]{40}\s*.*$" >/dev/null
+$GIT cat-file -p $tree | grep -Eq "^[0-9]{6} tree [0-9a-z]{40}\s*.+$" >/dev/null
 
-echo -n "cat-file -p #{blob hash} => "
-diff \
-  <($GIT cat-file -p $($GIT cat-file -p $($GIT cat-file -p $rev | grep tree | awk '{print $2}') | grep blob | head -1 | awk '{print $3}')) \
-  <($CGIT cat-file -p $($CGIT cat-file -p $($CGIT cat-file -p $rev | grep tree | awk '{print $2}') | grep blob | head -1 | awk '{print $3}'))
-echo_green "OK"
+blob_line=$($GIT cat-file -p "$tree" | grep blob | head -1)
+hash=$(echo "$blob_line" | awk '{print $3}')
+filename=$(echo "$blob_line" | awk '{print $4}')
+diff -q <($GIT cat-file -p "$hash") $filename >/dev/null

@@ -152,7 +152,9 @@ pub fn hash_content(content: &[u8]) -> Sha1 {
     hasher.update(content);
     let result = hasher.finalize();
 
-    Sha1 { inner: result.into() }
+    Sha1 {
+        inner: result.into(),
+    }
 }
 
 pub fn hash_object(object: &Object) -> Sha1 {
@@ -168,9 +170,13 @@ pub fn write_object(object: &Object) -> io::Result<Sha1> {
     let sha1_str = sha1_string.as_str();
 
     // mkdir -p .git/objects/xx
-    create_dir(&format!( ".git/objects/{}", &sha1_str[..2]))?;
+    create_dir(&format!(".git/objects/{}", &sha1_str[..2]))?;
 
-    let mut file = File::create(format!(".git/objects/{}/{}", &sha1_str[..2], &sha1_str[2..]))?;
+    let mut file = File::create(format!(
+        ".git/objects/{}/{}",
+        &sha1_str[..2],
+        &sha1_str[2..]
+    ))?;
     let mut encoder = flate2::write::ZlibEncoder::new(&mut file, flate2::Compression::default());
     encoder.write_all(&buffer)?;
 

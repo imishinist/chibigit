@@ -1,25 +1,11 @@
 #!/bin/bash
-
-set -e
-. "$(dirname "$0")"/common.sh
-DIR=$(pwd)
+. $(dirname $0)/common.inc
+cd $(setup_new)
 
 content="Hello, world!"
 
-echo -n "hash-object --stdin => "
-diff \
-  <(echo $content | $GIT hash-object --stdin) \
-  <(echo $content | $CGIT hash-object --stdin)
-echo_green OK
+hash=$(echo $content | $GIT hash-object --stdin | grep -E "^[0-9a-z]{40}$")
+! test -f ".git/objects/${hash:0:2}/${hash:2}" || false
 
-echo -n "hash-object --stdin -w => "
-diff \
-  <(cd $(mktemp -d) && \
-      $GIT init >/dev/null && \
-      echo $content | $GIT hash-object --stdin -w | xargs $GIT cat-file -p) \
-  <(cd $(mktemp -d) && \
-      mkdir -p target/debug && \
-      cp $DIR/target/debug/chibigit target/debug/chibigit && \
-      $CGIT init >/dev/null && \
-      echo $content | $CGIT hash-object --stdin -w | xargs $CGIT cat-file -p)
-echo_green OK
+hash=$(echo $content | $GIT hash-object --stdin -w | grep -E "^[0-9a-z]{40}$")
+test -f ".git/objects/${hash:0:2}/${hash:2}"

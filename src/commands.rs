@@ -1,7 +1,7 @@
-use crate::{ObjectType, write_file};
+use crate::{write_file, ObjectType};
 use clap::Args;
-use std::{fs, io};
 use std::io::Read;
+use std::{fs, io};
 
 #[derive(Args)]
 pub struct Init {
