@@ -1,11 +1,46 @@
 pub mod commands;
 
-use std::fmt::Display;
 pub use commands::*;
+use std::fmt::Display;
 
+use chrono::NaiveDateTime;
 use std::fs::File;
 use std::io::{self, BufRead, Read, Write};
-use chrono::NaiveDateTime;
+
+#[derive(Debug, Clone, Copy)]
+pub enum Mode {
+    Directory,
+    File,
+    Executable,
+    Symlink,
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::File
+    }
+}
+
+impl Mode {
+    pub fn to_octal(&self) -> u32 {
+        match self {
+            Mode::Directory => 0o040_000,
+            Mode::File => 0o100_644,
+            Mode::Executable => 0o100_755,
+            Mode::Symlink => 0o120_000,
+        }
+    }
+
+    pub fn from_octal(mode: u32) -> Self {
+        match mode {
+            0o040_000 => Mode::Directory,
+            0o100_644 => Mode::File,
+            0o100_755 => Mode::Executable,
+            0o120_000 => Mode::Symlink,
+            _ => panic!("Invalid mode"),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct IndexState {
@@ -22,7 +57,7 @@ pub struct IndexEntry {
 
     pub device: u32,
     pub inode: u32,
-    pub mode: u32,
+    pub mode: Mode,
 
     pub uid: u32,
     pub gid: u32,
@@ -72,7 +107,8 @@ pub struct Object {
 }
 
 pub struct TreeEntry {
-    pub mode: u32,
+    // octal
+    pub mode: Mode,
     pub name: String,
     pub sha1: [u8; 20],
 }
@@ -81,7 +117,6 @@ impl TreeEntry {
     pub fn get_sha1(&self) -> String {
         sha1_to_hex(&self.sha1)
     }
-
 }
 
 fn sha1_to_hex(sha1: &[u8]) -> String {
@@ -128,7 +163,7 @@ pub fn parse_tree_content(content: &[u8]) -> io::Result<Vec<TreeEntry>> {
         // "mode" " " "name" "\0" "sha1"
         buf.truncate(0);
         cursor.read_until(b' ', &mut buf)?;
-        let mode = parse_u32(&buf);
+        let mode = Mode::from_octal(parse_u32_octal(&buf));
 
         buf.truncate(0);
         cursor.read_until(b'\0', &mut buf)?;
@@ -161,7 +196,7 @@ fn read_index_entry(cursor: &mut io::Cursor<&[u8]>) -> io::Result<IndexEntry> {
     entry.mtime = read_timestamp(cursor)?;
     entry.device = read_u32(cursor)?;
     entry.inode = read_u32(cursor)?;
-    entry.mode = read_u32(cursor)?;
+    entry.mode = Mode::from_octal(read_u32(cursor)?);
     entry.uid = read_u32(cursor)?;
     entry.gid = read_u32(cursor)?;
     entry.size = read_u32(cursor)?;
@@ -236,6 +271,17 @@ fn parse_u32(input: &[u8]) -> u32 {
             break;
         }
         result = result * 10 + (byte - b'0') as u32;
+    }
+    result
+}
+
+fn parse_u32_octal(input: &[u8]) -> u32 {
+    let mut result = 0;
+    for byte in input {
+        if *byte < b'0' || *byte > b'7' {
+            break;
+        }
+        result = result * 8 + (byte - b'0') as u32;
     }
     result
 }

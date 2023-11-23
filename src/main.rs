@@ -1,5 +1,5 @@
-use clap::{Parser, Subcommand};
 use chibigit::commands;
+use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about=None)]
@@ -16,7 +16,6 @@ enum Commands {
     CatFile(commands::CatFile),
 }
 
-
 fn main() {
     let git = ChibiGit::parse();
     match &git.command {
@@ -25,4 +24,3 @@ fn main() {
         Commands::CatFile(cat_file) => cat_file.run(),
     }
 }
-
