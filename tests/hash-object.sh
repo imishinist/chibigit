@@ -5,12 +5,14 @@ set -e
 DIR=$(pwd)
 
 content="Hello, world!"
+
+echo -n "hash-object --stdin => "
 diff \
   <(echo $content | $GIT hash-object --stdin) \
   <(echo $content | $CGIT hash-object --stdin)
-echo "hash-object --stdin => OK"
+echo_green OK
 
-
+echo -n "hash-object --stdin -w => "
 diff \
   <(cd $(mktemp -d) && \
       $GIT init >/dev/null && \
@@ -20,4 +22,4 @@ diff \
       cp $DIR/target/debug/chibigit target/debug/chibigit && \
       $CGIT init >/dev/null && \
       echo $content | $CGIT hash-object --stdin -w | xargs $CGIT cat-file -p)
-echo "hash-object --stdin -w => OK"
+echo_green OK

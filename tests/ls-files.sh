@@ -3,7 +3,8 @@
 set -e
 . "$(dirname "$0")"/common.sh
 
+echo -n "ls-files => "
 diff \
   <($GIT ls-files --stage) \
   <($CGIT ls-files)
-echo "ls-files => OK"
+echo_green OK
