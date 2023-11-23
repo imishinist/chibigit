@@ -1,12 +1,7 @@
 #!/bin/bash
 
 set -e
-
-cargo build
-GIT="git"
-CGIT="./target/debug/chibigit"
-
-export RUST_BACKTRACE=1
+. "$(dirname "$0")"/common.sh
 
 rev=$(git rev-parse HEAD)
 diff \

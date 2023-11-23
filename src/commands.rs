@@ -1,6 +1,7 @@
-use crate::write_file;
+use crate::{ObjectType, write_file};
 use clap::Args;
-use std::fs;
+use std::{fs, io};
+use std::io::Read;
 
 #[derive(Args)]
 pub struct Init {
@@ -108,6 +109,43 @@ impl CatFile {
                     }
                 }
             }
+        }
+    }
+}
+
+#[derive(Args)]
+pub struct HashObject {
+    /// object type
+    #[arg(short = 't', value_name = "type")]
+    r#type: Option<ObjectType>,
+
+    /// write object into the object database
+    #[arg(short = 'w')]
+    write: bool,
+
+    /// read object from standard input
+    #[arg(long)]
+    stdin: bool,
+
+    /// read file names from standard input
+    #[arg(long)]
+    stdin_paths: bool,
+}
+
+impl HashObject {
+    pub fn run(&self) {
+        if self.stdin {
+            let mut buffer = Vec::new();
+            io::stdin()
+                .read_to_end(&mut buffer)
+                .expect("Failed to read from stdin");
+
+            let sha1 = crate::hash_object(&crate::Object {
+                r#type: ObjectType::Blob,
+                size: buffer.len() as u32,
+                content: buffer,
+            });
+            println!("{}", sha1);
         }
     }
 }

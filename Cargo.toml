@@ -9,3 +9,4 @@ edition = "2021"
 chrono = "0.4.31"
 clap = { version = "4.4.8", features = ["derive"] }
 flate2 = { version = "1.0.28", features = ["zlib"] }
+sha1 = "0.10.6"

@@ -14,6 +14,7 @@ enum Commands {
     Init(commands::Init),
     LsFiles(commands::LsFiles),
     CatFile(commands::CatFile),
+    HashObject(commands::HashObject),
 }
 
 fn main() {
@@ -22,5 +23,6 @@ fn main() {
         Commands::Init(init) => init.run(),
         Commands::LsFiles(ls_files) => ls_files.run(),
         Commands::CatFile(cat_file) => cat_file.run(),
+        Commands::HashObject(hash_object) => hash_object.run(),
     }
 }

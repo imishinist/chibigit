@@ -7,6 +7,10 @@ use chrono::NaiveDateTime;
 use std::fs::File;
 use std::io::{self, BufRead, Read, Write};
 
+use sha1::Digest;
+
+use clap::ValueEnum;
+
 #[derive(Debug, Clone, Copy)]
 pub enum Mode {
     Directory,
@@ -82,7 +86,7 @@ pub struct IndexHeader {
     pub entries: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, ValueEnum)]
 pub enum ObjectType {
     Commit,
     Tree,
@@ -119,8 +123,35 @@ impl TreeEntry {
     }
 }
 
+pub struct Sha1 {
+    inner: [u8; 20],
+}
+
+impl Display for Sha1 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let hex = sha1_to_hex(&self.inner);
+        write!(f, "{}", hex)
+    }
+}
+
 fn sha1_to_hex(sha1: &[u8]) -> String {
     sha1.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
+pub fn hash_content(content: &[u8]) -> Sha1 {
+    let mut hasher = sha1::Sha1::new();
+    hasher.update(content);
+    let result = hasher.finalize();
+
+    Sha1 { inner: result.into() }
+}
+
+pub fn hash_object(object: &Object) -> Sha1 {
+    let mut buffer = Vec::new();
+    buffer.extend_from_slice(format!("{} {}\0", object.r#type, object.size).as_bytes());
+    buffer.extend_from_slice(&object.content);
+
+    hash_content(&buffer)
 }
 
 pub fn parse_object(file: &[u8]) -> io::Result<Object> {
