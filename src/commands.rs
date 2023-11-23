@@ -76,6 +76,10 @@ impl LsFiles {
 
 #[derive(Args)]
 pub struct CatFile {
+    /// show object type
+    #[arg(short = 't', value_name = "object")]
+    r#type: Option<String>,
+
     /// pretty print <object> contents
     #[arg(short = 'p', value_name = "object")]
     preview: Option<String>,
@@ -83,6 +87,12 @@ pub struct CatFile {
 
 impl CatFile {
     pub fn run(&self) {
+        if let Some(object) = &self.r#type {
+            let object_id = ObjectID::from_hex(object).unwrap();
+            let object = crate::read_object(&object_id).unwrap();
+            println!("{}", object.r#type);
+            return;
+        }
         if let Some(object) = &self.preview {
             let object_id = ObjectID::from_hex(object).unwrap();
             let object = crate::read_object(&object_id).unwrap();
@@ -107,6 +117,7 @@ impl CatFile {
                     }
                 }
             }
+            return;
         }
     }
 }

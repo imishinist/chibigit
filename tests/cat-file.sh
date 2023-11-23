@@ -6,6 +6,7 @@ cd $(setup_new)
 rev=$(git rev-parse HEAD)
 $GIT cat-file -p $rev | grep -E "^tree [0-9a-z]{40}$" >/dev/null
 $GIT cat-file -p $rev | grep -E "^parent [0-9a-z]{40}$" >/dev/null
+$GIT cat-file -t $rev | grep -E "^commit$" >/dev/null
 
 tree=$($GIT cat-file -p $rev | grep tree | awk '{print $2}')
 $GIT cat-file -p "$tree" | grep -Ei "^[0-9]{6} blob [0-9a-z]{40}\s*.*$" >/dev/null
