@@ -1,7 +1,9 @@
-use crate::{write_file, ObjectType};
+use crate::{io_util, ObjectID, ObjectType};
+
+use std::fs;
+use std::io::{self, Read};
+
 use clap::Args;
-use std::io::Read;
-use std::{fs, io};
 
 #[derive(Args)]
 pub struct Init {
@@ -29,7 +31,7 @@ impl Init {
             ".git/branches",
         ];
         for dir in &dirs {
-            fs::create_dir_all(dir).expect("Failed to create directory");
+            io_util::create_dir(dir).expect("Failed to create directory");
         }
 
         let first_branch = match &self.initial_branch {
@@ -37,11 +39,11 @@ impl Init {
             None => "master",
         };
         let head = format!("ref: refs/heads/{}\n", first_branch);
-        (|| -> std::io::Result<()> {
-            write_file(".git/config", b"")?;
-            write_file(".git/HEAD", head.as_bytes())?;
-            write_file(".git/info/exclude", b"")?;
-            write_file(
+        (|| -> io::Result<()> {
+            io_util::write_file(".git/config", b"")?;
+            io_util::write_file(".git/HEAD", head.as_bytes())?;
+            io_util::write_file(".git/info/exclude", b"")?;
+            io_util::write_file(
                 ".git/description",
                 b"Unnamed repository; edit this file 'description' to name the repository.\n",
             )?;
@@ -62,12 +64,11 @@ pub struct LsFiles {}
 
 impl LsFiles {
     pub fn run(&self) {
-        let index_file = super::read_index().unwrap();
-        let index_state = super::parse_index_file(&index_file).unwrap();
+        let index_state = super::read_index().unwrap();
 
         for entry in &index_state.entries {
             let mode = entry.mode;
-            let sha1 = entry.get_sha1();
+            let sha1 = &entry.object_id;
             println!("{:o} {} 0\t{}", mode.to_octal(), sha1, entry.name);
         }
     }
@@ -83,26 +84,23 @@ pub struct CatFile {
 impl CatFile {
     pub fn run(&self) {
         if let Some(object) = &self.preview {
-            let object_file = crate::read_object(object).unwrap();
-            let object = crate::parse_object(&object_file).unwrap();
+            let object_id = ObjectID::from_hex(object).unwrap();
+            let object = crate::read_object(&object_id).unwrap();
 
             match object.r#type {
-                crate::ObjectType::Blob => {
+                ObjectType::Blob => {
                     print!("{}", std::str::from_utf8(&object.content).unwrap());
                 }
-                crate::ObjectType::Commit => {
+                ObjectType::Commit => {
                     print!("{}", std::str::from_utf8(&object.content).unwrap());
                 }
-                crate::ObjectType::Tree => {
+                ObjectType::Tree => {
                     let tree_content = crate::parse_tree_content(&object.content).unwrap();
                     for entry in tree_content {
-                        let entry_object = crate::read_object(&entry.get_sha1()).unwrap();
-                        let object = crate::parse_object(&entry_object).unwrap();
-
                         println!(
                             "{:06o} {} {}\t{}",
                             entry.mode.to_octal(),
-                            object.r#type,
+                            entry.r#type,
                             entry.get_sha1(),
                             entry.name
                         );
