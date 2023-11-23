@@ -1,3 +1,4 @@
+use std::fs;
 use std::fs::File;
 use std::io::{self, Read, Write};
 
@@ -17,4 +18,8 @@ pub fn write_file(filename: &str, content: &[u8]) -> io::Result<()> {
     let mut file = File::create(filename)?;
     file.write_all(content)?;
     Ok(())
+}
+
+pub fn file_exists(filename: &str) -> bool {
+    fs::metadata(filename).is_ok()
 }

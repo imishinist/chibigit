@@ -47,6 +47,7 @@ function setup_new() {
 on_error() {
   code=$?
   echo "command failed: $1: $BASH_COMMAND"
+  cat $DROP_LIST
   trap - EXIT
   exit $code
 }

@@ -403,7 +403,12 @@ pub fn write_object(object: &Object) -> io::Result<ObjectID> {
     let filename = object_filedir(&object_id);
     io_util::create_dir(&filename)?;
 
-    let mut file = File::create(object_filename(&object_id))?;
+    let filename = object_filename(&object_id);
+    if io_util::file_exists(&filename) {
+        return Ok(object_id);
+    }
+
+    let mut file = File::create(filename)?;
     let mut encoder = ZlibEncoder::new(&mut file, Compression::default());
     encoder.write_all(&buffer)?;
 

@@ -1,7 +1,7 @@
-use crate::{io_util, ObjectID, ObjectType};
+use crate::{io_util, Object, ObjectID, ObjectType};
 
 use std::fs;
-use std::io::{self, Read};
+use std::io::{self, BufRead, Read};
 
 use clap::Args;
 
@@ -143,24 +143,31 @@ pub struct HashObject {
 
 impl HashObject {
     pub fn run(&self) {
+        let get_sha1 = |object: &Object, write: bool| -> io::Result<ObjectID> {
+            let object_id = if write {
+                crate::write_object(object)?
+            } else {
+                crate::hash_object(object)
+            };
+            Ok(object_id)
+        };
         if self.stdin {
             let mut buffer = Vec::new();
             io::stdin()
                 .read_to_end(&mut buffer)
                 .expect("Failed to read from stdin");
 
-            let object = crate::Object {
-                r#type: ObjectType::Blob,
-                size: buffer.len() as u32,
-                content: buffer,
-            };
-
-            if self.write {
-                let sha1 = crate::write_object(&object).expect("Failed to write object");
-                println!("{}", sha1);
-            } else {
-                let sha1 = crate::hash_object(&object);
-                println!("{}", sha1);
+            let object = Object::new(ObjectType::Blob, buffer);
+            let sha1 = get_sha1(&object, self.write);
+            println!("{}", sha1.unwrap());
+        }
+        if self.stdin_paths {
+            for path in io::stdin().lock().lines() {
+                let filename = path.unwrap();
+                let content = io_util::read_file(&filename).expect("fatal: unable to hash file");
+                let object = Object::new(ObjectType::Blob, content);
+                let sha1 = get_sha1(&object, self.write);
+                println!("{}", sha1.unwrap());
             }
         }
     }
